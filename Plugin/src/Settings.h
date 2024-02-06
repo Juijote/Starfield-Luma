@@ -197,30 +197,34 @@ namespace Settings
     public:
 		EnumStepper DisplayMode {
 		    SettingID::kDisplayMode,
-		    "Display Mode",
-		    "Sets the game's display mode between SDR (Gamma 2.2 Rec.709), HDR10 BT.2020 PQ, or HDR scRGB."
+		    "显示模式",
+		    "将游戏的显示模式设置为 SDR (Gamma 2.2 Rec.709)、HDR10 BT.2020 PQ 或 HDR scRGB。"
 					"\n"
-					"\nHDR scRGB offers the highest quality but is not compatible with technologies like DLSS Frame Generation."
+					"\nHDR scRGB 提供最高质量，但与 DLSS 帧生成等技术不兼容。"
 					"\n"
-					"\nIn case Frame Generation is on, scRGB will internally fall back to HDR10 regardless of this setting.",
+					"\n如果打开“帧生成”，无论此设置如何，scRGB 都会在内部回退到 HDR10。"
+					"\n"
+					"\nLuma - 原生 HDR 及更多自定义 [JuiJ 汉化] [2023-12-31]"
+					"\n汉化更新 - https://juij.eu.org/#Starfield_Mod_Luma",
 		    "DisplayMode", "Main",
 		    0,
 		    { "SDR", "HDR10", "HDR scRGB" }
 		};
 		Checkbox ForceSDROnHDR{
 			SettingID::kForceSDROnHDR,
-			"Force SDR on scRGB HDR",
-			"When enabled, the game will still tonemap to SDR but output on an HDR scRGB swapchain.",
+			"在 scRGB HDR 上强制 SDR",
+			"启用后，游戏仍会将色调映射到 SDR，但在 HDR scRGB 交换链上输出。",
 			"ForceSDROnHDR", "Dev",
 			false
 		};
 		ValueStepper PeakBrightness{
 			SettingID::kHDR_PeakBrightness,
-			"Peak Brightness",
-			"Sets the peak brightness in HDR modes."
-				"\nThe value should match your display's peak brightness."
+			"峰值亮度",
+			"设置 HDR 模式下的峰值亮度"
 				"\n"
-				"\nThis does not affect the game's average brightness.",
+				"\n该值应与显示器的峰值亮度相匹配"
+				"\n"
+				"\n这不会影响游戏的平均亮度",
 			"PeakBrightness", "HDR",
 			1000,
 			80,
@@ -229,11 +233,12 @@ namespace Settings
 		};
 		ValueStepper GamePaperWhite{
 			SettingID::kHDR_GamePaperWhite,
-			"Game Paper White",
-			"Sets the in-game brightness of white in HDR modes."
-				"\nThis setting represents the brightness of white paper (100\% diffuse white) in-game."
+			"游戏纸张白",
+			"设置 HDR 模式下游戏中的白色亮度"
 				"\n"
-				"\nThe default value is 200.",
+				"\n此设置代表游戏中白纸的亮度（100\% 漫反射白色）"
+				"\n"
+				"\n默认值为 200",
 			"GamePaperWhite", "HDR",
 			200, /*ITU reference default is 203 but we don't want to confuse users*/
 			80,
@@ -242,11 +247,12 @@ namespace Settings
 		};
 		ValueStepper UIPaperWhite{
 			SettingID::kHDR_UIPaperWhite,
-			"UI Paper White",
-			"Sets the user-interface brightness in HDR modes."
-				"\nThis setting represents the brightness of UI elements."
+			"UI 纸张白",
+			"设置 HDR 模式下的用户界面亮度"
 				"\n"
-				"\nThe default value is 200",
+				"\n此设置代表 UI 元素的亮度"
+				"\n"
+				"\n默认值为 200",
 			"UIPaperWhite", "HDR",
 			200, /*ITU reference default is 203 but we don't want to confuse users*/
 			80,
@@ -255,10 +261,10 @@ namespace Settings
 		};
 		Slider ExtendGamut{
 			SettingID::kHDR_ExtendGamut,
-			"Extend Gamut",
-			"Shifts bright saturated colors from SDR to HDR, essentially acting as a \"smart\" saturation."
+			"扩展色域",
+			"将明亮饱和颜色从 SDR 转变为 HDR，本质上充当“智能”饱和度。"
 				"\n"
-				"\nNeutral at 0\%.",
+				"\n默认为 0\%",
 			"ExtendGamut", "HDR",
 			33.333f,
 			0.f,
@@ -268,10 +274,10 @@ namespace Settings
 
 		Slider SecondaryBrightness{
 			SettingID::kSecondaryBrightness,
-			"Brightness",
-			"Modulates the brightness in SDR modes."
+			"亮度",
+			"调节 SDR 模式中的亮度"
 				"\n"
-				"\nNeutral default at 50\%.",
+				"\n默认为 50\%",
 			"SecondaryBrightness", "Main",
 			50.f,
 			0.f,
@@ -281,21 +287,22 @@ namespace Settings
 
 		EnumStepper ToneMapperType{
 			SettingID::kToneMapperType,
-			"Tonemapper",
-			"Selects the tonemapper."
+			"色调映射器",
+			"选择色调映射器"
 				"\n"
-				"\nVanilla+ enhances the original tonemappers to provide an HDR experience."
-				"\nOpenDRT is a customizable SDR and HDR tonemapper modified to replicate the original look .",
+				"\n原生增强 提供了原生色调映射器以实现 HDR 体验"
+				"\n"
+				"\nOpenDRT 是一个可定制的 SDR 和 HDR 色调映射器，经过修改以复制原生色调。",
 			"ToneMapperType", "ToneMapper",
 			0,
-			{ "Vanilla+", "OpenDRT" }
+			{ "原生增强", "OpenDRT" }
 		};
 		Slider Saturation{
 			SettingID::kToneMapperSaturation,
-			"Saturation",
-			"Sets the saturation strength in the tonemapper."
+			"饱和度",
+			"设置色调映射器中的饱和度强度"
 				"\n"
-				"\nNeutral default at 50\%.",
+				"\n默认为 50\%",
 			"Saturation", "ToneMapper",
 			50.f,
 			0.f,
@@ -304,10 +311,10 @@ namespace Settings
 		};
 		Slider Contrast{
 			SettingID::kToneMapperContrast,
-			"Contrast",
-			"Sets the contrast strength in the tonemapper."
+			"对比度",
+			"设置色调映射器中的对比度强度"
 				"\n"
-				"\nNeutral default at 50\%.",
+				"\n默认为 50\%",
 			"Contrast", "ToneMapper",
 			50.f,
 			0.f,
@@ -316,10 +323,10 @@ namespace Settings
 		};
 		Slider Highlights{
 			SettingID::kToneMapperHighlights,
-			"Highlights",
-			"Sets the highlights strength in the tonemapper."
+			"高光",
+			"设置色调映射器中的高光强度"
 				"\n"
-				"\nNeutral default at 50\%.",
+				"\n默认为 50\%",
 			"Highlights", "ToneMapper",
 			50.f,
 			0.f,
@@ -328,10 +335,10 @@ namespace Settings
 		};
 		Slider Shadows{
 			SettingID::kToneMapperShadows,
-			"Shadows",
-			"Sets the shadows strength in the tonemapper."
+			"阴影",
+			"设置色调映射器中的阴影强度"
 				"\n"
-				"\nNeutral default at 50\%.",
+				"\n默认为 50\%",
 			"Shadows", "ToneMapper",
 			50.f,
 			0.f,
@@ -340,10 +347,10 @@ namespace Settings
 		};
 		Slider Bloom{
 			SettingID::kToneMapperBloom,
-			"Bloom",
-			"Sets the bloom strength in the tonemapper."
+			"泛光",
+			"设置色调映射器中的泛光强度"
 				"\n"
-				"\nNeutral default at 50\%.",
+				"\n默认为 50\%",
 			"Bloom", "ToneMapper",
 			50.f,
 			0.f,
@@ -353,8 +360,8 @@ namespace Settings
 
 		Slider ColorGradingStrength{
 			SettingID::kColorGradingStrength,
-			"Color Grading Strength",
-			"Sets the strength of the game's color grading used to apply the game's look and feel.",
+			"颜色分级强度",
+			"设置用于应用游戏色调的游戏颜色分级强度",
 			"ColorGradingStrength", "Main",
 			100.f,
 			0.f,
@@ -363,9 +370,10 @@ namespace Settings
 		};
 		Slider LUTCorrectionStrength{
 			SettingID::kLUTCorrectionStrength,
-			"Color Grading Range",
-			"Expands the color grading LUTs to be full-range."
-				"\nIncreasing will remove both the low-contrast fog present in shadows and the brightness limits in highlights caused by clamped LUTs.",
+			"颜色分级范围",
+			"将颜色分级 LUT 扩展到全范围"
+				"\n"
+				"\n增加将消除阴影中存在的低对比度雾以及由限制 LUT 引起的高光中亮度限制",
 			"LUTCorrectionStrength", "Main",
 			100.f,
 			0.f,
@@ -374,28 +382,29 @@ namespace Settings
 		};
 		Checkbox VanillaMenuLUTs{
 			SettingID::kVanillaMenuLUTs,
-			"Vanilla Menu Color Grading",
-			"When enabled, menus use the vanilla color grading and will be unaffected by the \"Color Grading Strength\" and \"Color Grading Range\" settings.",
+			"原生菜单颜色分级",
+			"启用后，菜单使用原生颜色分级，并且不受 “颜色分级强度” 和 “颜色分级范围” 设置的影响。",
 			"VanillaMenuLUTs", "Main",
 			true
 		};
 		Checkbox StrictLUTApplication{
 			SettingID::kStrictLUTApplication,
-			"Strict Color Grading",
-			"Applies color grading a way that is more similar to the vanilla SDR look. Leave off for a more HDR look.",
+			"严格颜色分级",
+			"以更类似于原生 SDR 色调的方式应用颜色分级，保留更多 HDR 色调。",
 			"StrictLUTApplication", "HDR",
 			false
 		};
 
 		Slider GammaCorrectionStrength{
 			SettingID::kGammaCorrectionStrength,
-			"Gamma Correction",
-			"Sets the gamma correction strength."
-				"\nThe game used the sRGB gamma formula but was calibrated on gamma 2.2 displays."
-				"\nThis mostly affects near black colors and might cause raised blacks if not used."
+			"伽玛校正",
+			"设置伽马校正强度"
 				"\n"
-				"\n100\% should match the intended vanilla look."
-				"\nIn SDR, Luma is meant to be played on gamma 2.2 displays.",
+				"\n该游戏使用 sRGB 伽玛公式，但在伽玛 2.2 显示器上进行了校准。"
+				"\n这主要影响接近黑色的颜色，如果不使用，可能会导致黑色突兀。"
+				"\n"
+				"\n100\% 应该符合预期的原生色调"
+				"\n在 SDR 中，Luma 旨在 伽玛 2.2 显示器上游玩。",
 			"GammaCorrectionStrength", "Main",
 			100.f,
 			0.f,
@@ -404,19 +413,22 @@ namespace Settings
 		};
 		EnumStepper FilmGrainType{
 			SettingID::kFilmGrainType,
-			"Film Grain Type",
-			"Sets the film grain type."
-				"\nPerceptual applies a film grain based on how graininess is perceived in real film."
-				"\nPerceptual, noticably, does not raise the black floor or discolor highlights.",
+			"胶片颗粒类型",
+			"设置胶片颗粒类型"
+				"\n"
+				"\n感知应用基于真实电影中颗粒感感知方式的电影颗粒。"
+				"\n"
+				"\n值得注意的是，感知不会提高黑色或使高光变色。",
 			"FilmGrainType", "Main",
 			1,
-			{ "Vanilla", "Perceptual" }
+			{ "原生", "感知" }
 		};
 		Slider FilmGrainFPSLimit{
 			SettingID::kFilmGrainFPSLimit,
-			"Film Grain FPS Limit",
-			"Allows a frame limit on the perceptual film grain to counteract motion-senstivity."
-				"\nUse 0 for uncapped film grain framerate.",
+			"胶片颗粒 FPS 限制",
+			"允许对感知胶片颗粒进行帧限制以抵消运动敏感性，"
+				"\n"
+				"\n使用 0 表示无上限的胶片颗粒帧速率。",
 			"FilmGrainFPSLimit", "Main",
 			0.f,
 			0.f,
@@ -424,23 +436,23 @@ namespace Settings
 		};
 		Checkbox PostSharpen{
 			SettingID::kPostSharpen,
-			"Post Sharpening",
-			"Toggles the game's default post-sharpen pass."
-				"\nBy default, this is ran (forced on) after certain sharpening/upscaling methods.",
+			"后期锐化",
+			"切换游戏默认的后期锐化锐化处理"
+				"\n默认情况下，这是在某些锐化/放大方法之后运行的（强制启用）。",
 			"PostSharpen", "Main",
 			true
 		};
 		Checkbox HDRScreenshots{
 			SettingID::kHDRScreenshots,
-			"HDR Screenshots",
-			"Capture an additional HDR screenshot (.jxr) when using Photo Mode while in HDR.",
+			"HDR 截图",
+			"在 HDR 下使用照片模式时，捕获额外的 HDR 屏幕截图 (.jxr)。",
 			"HDRScreenshots", "HDR",
 			true
 		};
 		Checkbox HDRScreenshotsLossless{
 			SettingID::kHDRScreenshotsLossless,
-			"Lossless",
-			"Enable to save the HDR screenshots with a lossless parameter. It vastly increases their filesize without a perceptible difference.",
+			"无损截图",
+			"启用无损参数保存 HDR 截图。这会大大增加文件大小，但不会有明显差别。",
 			"HDRScreenshotsLossless", "HDR",
 			false
 		};
