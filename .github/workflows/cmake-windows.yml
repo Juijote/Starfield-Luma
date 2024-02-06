@@ -7,6 +7,7 @@ on:
     branches: [ master ]
   pull_request:
     branches: [ master ]
+  workflow_dispatch:
 
 jobs:
   build:
@@ -51,3 +52,13 @@ jobs:
     - name: Build
       # Build your program with the given configuration. Note that --config is needed because the default Windows generator is a multi-config generator (Visual Studio generator).
       run: cmake --build ${{ steps.strings.outputs.build-output-dir }} --config Release
+
+    - name: Upload multiple files
+      uses: actions/upload-artifact@v2
+      with:
+        name: release-artifacts
+        path: |
+          ${{ github.workspace }}/build/Release/Luma.dll
+          ${{ github.workspace }}/build/SFSE/sfse_loader/Release/sfse_loader.exe
+          ${{ github.workspace }}/build/SFSE/sfse/Release
+        if-no-files-found: error
