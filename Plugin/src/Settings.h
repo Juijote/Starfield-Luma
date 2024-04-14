@@ -205,7 +205,7 @@ namespace Settings
 					"\n如果打开“帧生成”，无论此设置如何，scRGB 都会在内部回退到 HDR10。"
 					"\n"
 					"\nLuma - 原生 HDR 及更多自定义 [v1.9.51.0] [JuiJ 汉化] [2024-02-07]"
-					"\n汉化更新 - https://juij.eu.org/#Starfield_Mod_Luma",
+					"\n汉化更新 - https://juij.fun/#Starfield_Mod_Luma",
 		    "DisplayMode", "Main",
 		    0,
 		    { "SDR", "HDR10", "HDR scRGB" }
