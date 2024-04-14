@@ -1,5 +1,6 @@
 #include "Settings.h"
 
+#include "Hooks.h"
 #include "Utils.h"
 
 #define ICON_FK_UNDO reinterpret_cast<const char*>(u8"\uf0e2")
@@ -27,7 +28,7 @@ namespace Settings
 
     std::string Slider::GetSliderText() const
     {
-		return std::format("{}{}", value.get_data(), suffix);
+		return std::format("{:.0f}{}", value.get_data(), suffix);
     }
 
     float Slider::GetValueFromSlider(float a_percentage) const
@@ -50,8 +51,6 @@ namespace Settings
 		// force fGamma and fGammaUI to 2.4 just in case, even though we ignore it anyway
         *Offsets::fGamma = 2.4f;
         *Offsets::fGammaUI = 2.4f;
-
-		bFramegenOn = *Offsets::uiFrameGenerationTech > 0;
 
 		// check for other plugins being present
 		auto isModuleLoaded = [&](LPCWSTR a_moduleName) {
@@ -86,8 +85,9 @@ namespace Settings
 		}
 
 		// check if Nukem's dlssg to fsr3 is present
-		if (isModuleLoaded(moduleNameDLSSGTOFSR3)) {
+		if (!bIsDLSSGTOFSR3Present && isModuleLoaded(moduleNameDLSSGTOFSR3)) {
 		    bIsDLSSGTOFSR3Present = true;
+		    Hooks::Patches::PatchStreamline();
 		}
 
 		// check hdr support
@@ -160,7 +160,7 @@ namespace Settings
 		return FilmGrainType.value.get_data() == 1;
 	}
 
-    int32_t Main::GetActualDisplayMode(bool bAcknowledgeScreenshots) const
+    int32_t Main::GetActualDisplayMode(bool bAcknowledgeScreenshots, std::optional<RE::FrameGenerationTech> a_frameGenerationTech) const
 	{
 		if (IsSDRForcedOnHDR(bAcknowledgeScreenshots)) {
 		    return -1;
@@ -168,14 +168,16 @@ namespace Settings
 
 		const auto value = DisplayMode.value.get_data();
 
-		if (bFramegenOn) {
-			// force scRGB with dlssg if dlssg_to_fsr3 is present
-			if (value == 1 && bIsDLSSGTOFSR3Present) {
+		RE::FrameGenerationTech frameGenerationTech = a_frameGenerationTech.has_value() ? a_frameGenerationTech.value() : *Offsets::uiFrameGenerationTech;
+
+		if (frameGenerationTech > RE::FrameGenerationTech::kNone) {
+			// force scRGB with fsr3 or dlssg if dlssg_to_fsr3 is present
+			if (value == 1 && frameGenerationTech == RE::FrameGenerationTech::kFSR3 || (frameGenerationTech == RE::FrameGenerationTech::kDLSSG && bIsDLSSGTOFSR3Present)) {
 			    return 2;
 			}
 
 			// otherwise force HDR10
-			if (value == 2 && !bIsDLSSGTOFSR3Present) {
+			if (value == 2 && frameGenerationTech == RE::FrameGenerationTech::kDLSSG && !bIsDLSSGTOFSR3Present) {
 			    return 1;
 			}
 		}
@@ -183,9 +185,9 @@ namespace Settings
 		return value;
 	}
 
-    RE::BS_DXGI_FORMAT Main::GetDisplayModeFormat() const
+    RE::BS_DXGI_FORMAT Main::GetDisplayModeFormat(std::optional<RE::FrameGenerationTech> a_frameGenerationTech) const
     {
-		switch (GetActualDisplayMode()) {
+		switch (GetActualDisplayMode(false, a_frameGenerationTech)) {
 		default:
 		case 0:
 		case 1:
@@ -210,23 +212,27 @@ namespace Settings
 		}
     }
 
-    void Main::RefreshSwapchainFormat()
+    void Main::RefreshSwapchainFormat(std::optional<RE::FrameGenerationTech> a_frameGenerationTech)
 	{
-		const RE::BS_DXGI_FORMAT newFormat = GetDisplayModeFormat();
+		const RE::BS_DXGI_FORMAT newFormat = GetDisplayModeFormat(a_frameGenerationTech);
 		Utils::SetBufferFormat(RE::Buffers::FrameBuffer, newFormat);
 
 		swapChainObject->format = newFormat;
+
+		// toggle vsync to force a swapchain recreation
+		Offsets::ToggleVsync(reinterpret_cast<void*>(*Offsets::unkToggleVsyncArg1Ptr + 0x8), *Offsets::bEnableVsync);
 	}
 
     void Main::OnDisplayModeChanged()
 	{
+		if (*Offsets::uiFrameGenerationTech == RE::FrameGenerationTech::kFSR3) {
+			bNeedsToRefreshFSR3 = true;
+		}
+
 		RefreshHDRDisplaySupportState();
 		RefreshHDRDisplayEnableState();
 
 		RefreshSwapchainFormat();
-
-		// toggle vsync to force a swapchain recreation
-		Offsets::ToggleVsync(reinterpret_cast<void*>(*Offsets::unkToggleVsyncArg1Ptr + 0x8), *Offsets::bEnableVsync);
 	}
 
     void Main::GetShaderConstants(ShaderConstants& a_outShaderConstants) const

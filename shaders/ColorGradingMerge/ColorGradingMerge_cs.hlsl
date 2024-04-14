@@ -151,7 +151,11 @@ float3 PatchLUTColor(Texture2D<float3> LUT, uint3 UVW, float3 neutralGamma, floa
 	// The saturation multiplier in LUTs is restricted to HDR (or gamut mapped SDR) as it easily goes beyond Rec.709
 	const float saturation = SDRRange ? 1.f : HdrDllPluginConstants.ToneMapperSaturation;
 
-#if LUT_IMPROVEMENT_TYPE == 1
+#if LUT_IMPROVEMENT_TYPE == 0
+	float targetL = originalLCh[0];
+	const float targetChroma = originalLCh[1] * saturation;
+	const float targetHue = originalLCh[2];
+#elif LUT_IMPROVEMENT_TYPE == 1
 
 	// Note: Black scaling implements curve in the newly created shadow region
 	// This gives it more contrast than if it were to be just restored
@@ -301,12 +305,11 @@ float3 PatchLUTColor(Texture2D<float3> LUT, uint3 UVW, float3 neutralGamma, floa
 
 #endif
 
+	targetL = max(0, targetL);
+
 	const float3 targetLCh = float3(targetL, targetChroma, targetHue);
 	float3 outputLCh = targetLCh;
 
-	if (targetL <= 0) {
-		outputLCh = 0; // Force black
-	}
 	
 #if 0
 	// Try to remove the S filmic tonemapper curve that is baked in inside some LUTs.
@@ -457,6 +460,13 @@ void CS(uint3 SV_DispatchThreadID : SV_DispatchThreadID)
 	mixedLUT = oklab_to_linear_srgb(mixedLUT);
 	//TODO: make this case convert to sRGB as LUT mapping is more correct in sRGB
 #endif // LUT_MAPPINT_TYPE
+
+#if CLAMP_INPUT_OUTPUT_TYPE == 1 || CLAMP_INPUT_OUTPUT_TYPE == 2 && LUT_MAPPING_TYPE >= 1
+	// Clamp to AP1 since OKLab colors may turn black when not clamped
+	mixedLUT = mul(BT709_2_AP1D65, mixedLUT);
+	mixedLUT = max(mixedLUT, 0.f);
+	mixedLUT = mul(AP1D65_2_BT709, mixedLUT);
+#endif
 
 	// If necessary (!GAMMA_CORRECTION_IN_LUTS), shift from gamma 2.2 to sRGB interpretation, so the LUT input and output colors
 	// are in the same gamma space, which should be more mathematically correct, and we can then instead do the gamma correction later.

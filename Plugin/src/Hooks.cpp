@@ -254,25 +254,28 @@ namespace Hooks
 		D3D12_GPU_DESCRIPTOR_HANDLE GpuHandleBase;
 	};
 
-	struct Dx12Resource // Setup at 00000001432E692F
+	struct Dx12Resource
 	{
-		char _pad0[0x78];												// 0
-		int  m_DescriptorArrayCount;									// 78 Greater than 0 (msb bit) indicates array
+		char _pad0[0x48];                // 0
+		int  m_CpuDescriptorArrayCount;  // 48 Greater than 0 (msb bit) indicates an array
 		union
 		{
-			D3D12_CPU_DESCRIPTOR_HANDLE  m_CpuDescriptor;				// 80 Possibly mip levels? No idea w.r.t. its purpose
-			D3D12_CPU_DESCRIPTOR_HANDLE* m_CpuDescriptorArray;			// 80
+			D3D12_CPU_DESCRIPTOR_HANDLE  m_CpuDescriptor;       // 50 Possibly mip levels? No idea w.r.t. its purpose
+			D3D12_CPU_DESCRIPTOR_HANDLE* m_CpuDescriptorArray;  // 50
 		};
-		D3D12_CPU_DESCRIPTOR_HANDLE m_CBVCpuDescriptor;                 // 88 Each handle is unioned with an array like above?
-		D3D12_CPU_DESCRIPTOR_HANDLE m_SRVCpuDescriptor;                 // 90
-		D3D12_CPU_DESCRIPTOR_HANDLE m_UAVCpuDescriptor;					// 98
-		D3D12_CPU_DESCRIPTOR_HANDLE m_UnknownSecondaryUAVCpuDescriptor;	// A0 Probably raytracing related
-		ID3D12Resource*             m_Resource;							// A8
-		uint32_t                    m_TransitionState;					// B0 Flags converted to D3D12_RESOURCE_STATES enum
+		char _pad1[0x8];                    // 58
+		int  m_UAVCpuDescriptorArrayCount;  // 60
+		union
+		{
+			D3D12_CPU_DESCRIPTOR_HANDLE  m_UAVCpuDescriptor;       // 68
+			D3D12_CPU_DESCRIPTOR_HANDLE* m_UAVCpuDescriptorArray;  // 68
+		};
+		char            _pad2[0x8];  // 70
+		ID3D12Resource* m_Resource;  // 78
 	};
-	static_assert(offsetof(Dx12Resource, m_DescriptorArrayCount) == 0x78);
-	static_assert(offsetof(Dx12Resource, m_CBVCpuDescriptor) == 0x88);
-	static_assert(offsetof(Dx12Resource, m_Resource) == 0xA8);
+	static_assert(offsetof(Dx12Resource, m_CpuDescriptorArrayCount) == 0x48);
+	static_assert(offsetof(Dx12Resource, m_UAVCpuDescriptor) == 0x68);
+	static_assert(offsetof(Dx12Resource, m_Resource) == 0x78);
 
 	thread_local Dx12Resource *ScaleformCompositeRenderTarget;
 
@@ -360,7 +363,7 @@ namespace Hooks
     void Hooks::UploadRootConstants(void* a1, void* a2)
     {
 		const auto technique = *reinterpret_cast<uintptr_t*>(reinterpret_cast<uintptr_t>(a2) + 0x8);
-		const auto techniqueId = *reinterpret_cast<uint64_t*>(technique + 0x78);
+		const auto techniqueId = *reinterpret_cast<uint64_t*>(technique + 0x60);
 
 		auto uploadRootConstants = [&](const Settings::ShaderConstants& a_shaderConstants, uint32_t a_rootParameterIndex, bool a_bCompute) {
 			auto commandList = *reinterpret_cast<ID3D12GraphicsCommandList**>(reinterpret_cast<uintptr_t>(a1) + 0x10);
@@ -475,12 +478,11 @@ namespace Hooks
 		return _UnkFunc(a1, a_bgsSwapchainObject);
     }
 
-    void Hooks::Hook_UnkFunc2(uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4)
+    void Hooks::Hook_UnkFunc2(uint64_t a1, uint64_t a2)
 	{
-		_UnkFunc2(a1, a2, a3, a4);
+		_UnkFunc2(a1, a2);
 
 		const auto settings = Settings::Main::GetSingleton();
-		settings->bFramegenOn = *Offsets::uiFrameGenerationTech > 0;
 
 		Utils::SetBufferFormat(RE::Buffers::FrameBuffer, settings->GetDisplayModeFormat());
 	}
@@ -566,6 +568,25 @@ namespace Hooks
 		case static_cast<int>(Settings::SettingID::kPostSharpen):
 			HandleSetting(settings->PostSharpen);
 		    break;
+		case 24:  // Frame Generation
+			const auto prevFramegenValue = *Offsets::uiFrameGenerationTech;
+			const auto isFramegenOn = a_eventData.m_Value.Bool;
+			RE::FrameGenerationTech newFramegenValue;
+			if (isFramegenOn) {
+				if (*Offsets::uiUpscalingTechnique == RE::UpscalingTechnique::kDLSS) {
+					newFramegenValue = RE::FrameGenerationTech::kDLSSG;
+				} else {
+					newFramegenValue = RE::FrameGenerationTech::kFSR3;
+				}
+			} else {
+				newFramegenValue = RE::FrameGenerationTech::kNone;
+			}
+			if (prevFramegenValue != newFramegenValue) {
+				if (prevFramegenValue != newFramegenValue) {
+					settings->RefreshSwapchainFormat(newFramegenValue);
+				}
+			}
+			break;
 		}
 
 		_SettingsDataModelCheckboxChanged(a_arg1, a_eventData);
@@ -627,16 +648,35 @@ namespace Hooks
 				filmGrainFPSLimit->m_Enabled.SetValue(settings->IsFilmGrainTypeImproved());
 			}
 			break;
-		case 24: // Frame Generation
-		    const auto prevFramegenValue = *Offsets::uiFrameGenerationTech;
-			const auto newFramegenValue = a_eventData.m_Value.Int;
-			if (prevFramegenValue != newFramegenValue) {
-				settings->bFramegenOn.store(a_eventData.m_Value.Int > 0);
-				if (prevFramegenValue == 0 || newFramegenValue == 0) {
-					settings->RefreshSwapchainFormat();
+		case 22:  // Upscaling Technique
+			auto getUpscalingTechnique = [](int a_settingValue) {
+				switch (a_settingValue) {
+				case 0:  // off
+					return RE::UpscalingTechnique::kNone;
+				case 1:  // CAS
+					return RE::UpscalingTechnique::kCAS;
+				case 2:  // FSR3
+					return RE::UpscalingTechnique::kFSR3;
+				case 3:  // DLSS
+					return RE::UpscalingTechnique::kDLSS;
+				case 4:  // XESS
+					return RE::UpscalingTechnique::kXESS;
 				}
+			};
+			const auto prevUpscalingTechnique = *Offsets::uiUpscalingTechnique;
+			const auto newUpscalingTechnique = getUpscalingTechnique(a_eventData.m_Value.Int);
+			if (prevUpscalingTechnique != newUpscalingTechnique && *Offsets::uiFrameGenerationTech != RE::FrameGenerationTech::kNone) {
+				RE::FrameGenerationTech newFramegenValue;
+				if (newUpscalingTechnique == RE::UpscalingTechnique::kDLSS) {
+					newFramegenValue = RE::FrameGenerationTech::kDLSSG;
+				} else if (newUpscalingTechnique == RE::UpscalingTechnique::kFSR2 || newUpscalingTechnique == RE::UpscalingTechnique::kFSR3) {
+					newFramegenValue = RE::FrameGenerationTech::kFSR3;
+				} else {
+					newFramegenValue = RE::FrameGenerationTech::kNone;
+				}
+				settings->RefreshSwapchainFormat(newFramegenValue);
 			}
-			break;
+		    break;
 		}
 
 		_SettingsDataModelStepperChanged(a_arg1, a_eventData);
@@ -657,6 +697,7 @@ namespace Hooks
 
 			// Skip _SettingsDataModelSliderChanged and queue the update callback ourselves. Why, you ask? Bethesda had the
 			// brilliant idea to hardcode slider option text values.
+			const std::string sliderText = a_setting.GetSliderText();
 			struct
 			{
 				int            v1;         // 0
@@ -667,7 +708,7 @@ namespace Hooks
 			} const callbackData = {
 				.v1 = a_eventData.m_SettingID,
 				.v2 = a_eventData.m_Value.Float,
-				.v3 = a_setting.GetSliderText().c_str(),
+				.v3 = sliderText.c_str(),
 			};
 
 			const auto modelData = *reinterpret_cast<void**>(reinterpret_cast<uintptr_t>(a_eventData.m_Model) + 0x8);
@@ -717,17 +758,10 @@ namespace Hooks
 		return false;
     }
 
-    void Hooks::Hook_SettingsDataModelSliderChanged1(RE::SettingsDataModel::UpdateEventData& a_eventData)
+    void Hooks::Hook_SettingsDataModelSliderChanged(void* a_arg1, RE::SettingsDataModel::UpdateEventData& a_eventData)
     {
 		if (!OnSettingsDataModelSliderChanged(a_eventData)) {
-			_SettingsDataModelSliderChanged1(a_eventData);
-		}
-    }
-
-    void Hooks::Hook_SettingsDataModelSliderChanged2(RE::SettingsDataModel::UpdateEventData& a_eventData)
-    {
-		if (!OnSettingsDataModelSliderChanged(a_eventData)) {
-			_SettingsDataModelSliderChanged2(a_eventData);
+			_SettingsDataModelSliderChanged(a_arg1, a_eventData);
 		}
     }
 
@@ -775,6 +809,58 @@ namespace Hooks
 			wasInPauseMenu = false;
 		}
     }
+
+    int32_t Hooks::Hook_ffxFsr3ContextCreate(void* a_context, RE::FfxFsr3ContextDescription* a_contextDescription)
+	{
+		// format is hardcoded to FFX_SURFACE_FORMAT_R8G8B8A8_UNORM in vanilla
+
+		RE::BS_DXGI_FORMAT newFormat = Settings::Main::GetSingleton()->GetDisplayModeFormat();
+		switch (newFormat) {
+		case RE::BS_DXGI_FORMAT::BS_DXGI_FORMAT_R10G10B10A2_UNORM:
+			a_contextDescription->backBufferFormat = RE::FFX_SURFACE_FORMAT_R10G10B10A2_UNORM;  
+		    break;
+		case RE::BS_DXGI_FORMAT::BS_DXGI_FORMAT_R16G16B16A16_FLOAT:
+			a_contextDescription->backBufferFormat = RE::FFX_SURFACE_FORMAT_R16G16B16A16_FLOAT;
+		    break;
+		}
+
+	    return _ffxFsr3ContextCreate(a_context, a_contextDescription);
+	}
+
+    void Hooks::Hook_CreateShaderResourceView(ID3D12Device* a_this, ID3D12Resource* a_resource, D3D12_SHADER_RESOURCE_VIEW_DESC* a_desc, D3D12_CPU_DESCRIPTOR_HANDLE a_destDescriptor)
+	{
+		// for whatever reason the format is typeless and needs to be fixed up
+
+		if (a_desc->Format == DXGI_FORMAT_R16G16B16A16_TYPELESS) {
+			a_desc->Format = DXGI_FORMAT_R16G16B16A16_FLOAT;
+		}
+
+	    a_this->CreateShaderResourceView(a_resource, a_desc, a_destDescriptor);
+	}
+
+	static uint64_t g_savedUnk;
+
+    void Hooks::Hook_UnkFunc3(uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, uint64_t* a5, uint64_t a6, uint8_t a7)
+	{
+		const auto settings = Settings::Main::GetSingleton();
+		if (settings->bNeedsToRefreshFSR3) {
+			g_savedUnk = a1;
+			a1 = UINT64_MAX;  // force fail check
+		}
+
+		_UnkFunc3(a1, a2, a3, a4, a5, a6, a7);
+	}
+
+    void Hooks::Hook_UnkFunc3_Internal(uint64_t a1, uint64_t a2, uint64_t a3, uint64_t a4, uint64_t* a5, uint64_t a6)
+	{
+		const auto settings = Settings::Main::GetSingleton();
+		if (settings->bNeedsToRefreshFSR3) {
+			a1 = g_savedUnk;
+			settings->bNeedsToRefreshFSR3 = false;
+		}
+
+		_UnkFunc3_Internal(a1, a2, a3, a4, a5, a6);
+	}
 
     void Install()
 	{

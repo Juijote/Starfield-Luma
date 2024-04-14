@@ -1,8 +1,5 @@
 #pragma once
-#include "RE/BSFixedString.h"
-#include "RE/Buffers.h"
-#include "RE/MessageBoxData.h"
-
+#include "RE/Types.h"
 #include "sfse/GameUI.h"
 
 class Offsets
@@ -42,7 +39,8 @@ public:
 	static inline bool* bEnableVsync = nullptr;
 	static inline float* fGamma = nullptr;
 	static inline float* fGammaUI = nullptr;
-	static inline uint32_t* uiFrameGenerationTech = nullptr;
+	static inline RE::UpscalingTechnique*  uiUpscalingTechnique = nullptr;
+	static inline RE::FrameGenerationTech* uiFrameGenerationTech = nullptr;
 
 	static void Initialize()
 	{
@@ -51,7 +49,7 @@ public:
 
 		ToggleVsync = reinterpret_cast<tToggleVsync>(dku::Hook::IDToAbs(184653));
 		unkToggleVsyncArg1Ptr = reinterpret_cast<uintptr_t*>(dku::Hook::IDToAbs(878340));
-		bEnableVsync = reinterpret_cast<bool*>(dku::Hook::IDToAbs(1171838));  // 875798 pre 1.8
+		bEnableVsync = reinterpret_cast<bool*>(dku::Hook::IDToAbs(1488777));  // 875798 pre 1.8, 1171838 pre fsr3
 
 		MessageMenuManagerPtr = reinterpret_cast<void**>(dku::Hook::IDToAbs(878772));
 		ShowMessageBox = reinterpret_cast<tShowMessageBox>(dku::Hook::IDToAbs(167094));
@@ -71,6 +69,7 @@ public:
 
 		fGamma = reinterpret_cast<float*>(dku::Hook::IDToAbs(1171814));
 		fGammaUI = reinterpret_cast<float*>(dku::Hook::IDToAbs(1171816));
-		uiFrameGenerationTech = reinterpret_cast<uint32_t*>(dku::Hook::IDToAbs(1171831));
+		uiUpscalingTechnique = reinterpret_cast<RE::UpscalingTechnique*>(dku::Hook::IDToAbs(875684));
+		uiFrameGenerationTech = reinterpret_cast<RE::FrameGenerationTech*>(dku::Hook::IDToAbs(1488775));
 	}
 };

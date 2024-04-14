@@ -204,8 +204,9 @@ namespace Settings
 					"\n"
 					"\n如果打开“帧生成”，无论此设置如何，scRGB 都会在内部回退到 HDR10。"
 					"\n"
-					"\nLuma - 原生 HDR 及更多自定义 [v1.9.51.0] [JuiJ 汉化] [2024-02-07]"
-					"\n汉化更新 - https://juij.fun/#Starfield_Mod_Luma",
+					"\nLuma - 原生 HDR 及更多自定义 [v1.10.32.0] [JuiJ 汉化] [2024-04-14]"
+					"\n汉化更新 - https://juij.fun/#Starfield_Mod_Luma"
+					"\n公众号更新 - 非线性列车",
 		    "DisplayMode", "Main",
 		    0,
 		    { "SDR", "HDR10", "HDR scRGB" }
@@ -479,11 +480,11 @@ namespace Settings
 		void SetAtEndOfFrame(bool a_bIsAtEndOfFrame) { bIsAtEndOfFrame.store(a_bIsAtEndOfFrame); }
 
 		RE::BGSSwapChainObject* GetSwapChainObject() const { return swapChainObject; }
-		int32_t GetActualDisplayMode(bool bAcknowledgeScreenshots = false) const;
-		RE::BS_DXGI_FORMAT GetDisplayModeFormat() const;
+		int32_t GetActualDisplayMode(bool bAcknowledgeScreenshots = false, std::optional<RE::FrameGenerationTech> a_frameGenerationTech = std::nullopt) const;
+		RE::BS_DXGI_FORMAT GetDisplayModeFormat(std::optional<RE::FrameGenerationTech> a_frameGenerationTech = std::nullopt) const;
         DXGI_COLOR_SPACE_TYPE GetDisplayModeColorSpaceType() const;
 
-		void RefreshSwapchainFormat();
+		void RefreshSwapchainFormat(std::optional<RE::FrameGenerationTech> a_frameGenerationTech = std::nullopt);
 		void OnDisplayModeChanged();
 
 		void GetShaderConstants(ShaderConstants& a_outShaderConstants) const;
@@ -499,7 +500,8 @@ namespace Settings
 
 		std::atomic_bool bRequestedSDRScreenshot = false;
 		std::atomic_bool bRequestedHDRScreenshot = false;
-		std::atomic_bool bFramegenOn = false;
+
+        std::atomic_bool bNeedsToRefreshFSR3 = false;
 
     private:
 		TomlConfig sfseConfig = COMPILE_PROXY("Data\\SFSE\\Plugins\\Luma.toml");
